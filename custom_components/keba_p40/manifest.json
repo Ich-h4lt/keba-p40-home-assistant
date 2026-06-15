@@ -1,0 +1,11 @@
+{
+  "domain": "keba_p40",
+  "name": "KEBA P40",
+  "codeowners": ["@Ich-h4lt"],
+  "config_flow": true,
+  "documentation": "https://github.com/Ich-h4lt/keba-p40-home-assistant",
+  "issue_tracker": "https://github.com/Ich-h4lt/keba-p40-home-assistant/issues",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.2.0"
+}

@@ -1,0 +1,189 @@
+# Legacy YAML example for a KEBA P40 using its local REST API.
+# Copy this file to /config/packages/keba_p40.yaml.
+
+rest:
+  # Login is refreshed periodically. The access token is stored as an
+  # attribute because a JWT is too long for a Home Assistant sensor state.
+  - resource: !secret keba_login_url
+    method: POST
+    scan_interval: 900
+    timeout: 20
+    verify_ssl: false
+    headers:
+      Content-Type: application/json
+    payload: !secret keba_login_payload
+    sensor:
+      - name: "KEBA API Login"
+        unique_id: keba_api_login
+        value_template: >
+          {{ 'connected' if value_json.accessToken is defined else 'error' }}
+        json_attributes:
+          - accessToken
+
+  - resource: !secret keba_wallbox_status_url
+    scan_interval: 30
+    timeout: 20
+    verify_ssl: false
+    headers:
+      Authorization: >
+        Bearer {{ state_attr('sensor.keba_api_login', 'accessToken') }}
+      Accept: application/json
+    sensor:
+      - name: "KEBA Status"
+        unique_id: keba_status
+        value_template: "{{ value_json.state }}"
+
+      - name: "KEBA Verwendete Phasen"
+        unique_id: keba_phase_used
+        value_template: "{{ value_json.phaseUsed }}"
+
+      - name: "KEBA Angebotener Strom"
+        unique_id: keba_current_offered
+        device_class: current
+        state_class: measurement
+        unit_of_measurement: "A"
+        value_template: >
+          {{ (value_json.meter.currentOffered | float(0) / 1000) | round(3) }}
+
+      - name: "KEBA Wirkleistung"
+        unique_id: keba_total_active_power
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: "W"
+        value_template: >
+          {{ (value_json.meter.totalActivePower | float(0) / 1000) | round(0) }}
+
+      - name: "KEBA Fahrzeug verbunden"
+        unique_id: keba_vehicle_plugged
+        value_template: "{{ value_json.vehiclePlugged }}"
+
+  - resource: !secret keba_load_management_url
+    scan_interval: 30
+    timeout: 20
+    verify_ssl: false
+    headers:
+      Authorization: >
+        Bearer {{ state_attr('sensor.keba_api_login', 'accessToken') }}
+      Accept: application/json
+    sensor:
+      - name: "KEBA Maximal Verfuegbarer Strom"
+        unique_id: keba_max_available_current
+        device_class: current
+        state_class: measurement
+        unit_of_measurement: "A"
+        value_template: >
+          {% set values = value_json.configs
+             | selectattr('key', 'eq', 'max_available_current')
+             | map(attribute='value') | list %}
+          {{ ((values | first | default(0)) | float / 1000) | round(3) }}
+
+      - name: "KEBA Maximaler Phasenschiefstrom"
+        unique_id: keba_max_asymmetrical_phase_current
+        device_class: current
+        state_class: measurement
+        unit_of_measurement: "A"
+        value_template: >
+          {% set values = value_json.configs
+             | selectattr('key', 'eq', 'max_asymmetrical_phase_current')
+             | map(attribute='value') | list %}
+          {{ ((values | first | default(0)) | float / 1000) | round(3) }}
+
+rest_command:
+  keba_set_phases:
+    url: !secret keba_phase_toggle_url
+    method: POST
+    timeout: 20
+    verify_ssl: false
+    headers:
+      Authorization: >
+        Bearer {{ state_attr('sensor.keba_api_login', 'accessToken') }}
+      Accept: application/json
+    content_type: application/json
+    payload: "{}"
+
+  keba_set_max_current:
+    url: !secret keba_load_management_url
+    method: PUT
+    timeout: 20
+    verify_ssl: false
+    headers:
+      Authorization: >
+        Bearer {{ state_attr('sensor.keba_api_login', 'accessToken') }}
+      Accept: application/json
+    content_type: application/json
+    payload: >
+      {
+        "configs": [
+          {
+            "key": "max_available_current",
+            "value": {{ current_ma | int }}
+          }
+        ]
+      }
+
+script:
+  keba_phases_setzen:
+    alias: "KEBA Phasen setzen"
+    description: "Schaltet die Wallbox auf eine oder drei Phasen."
+    mode: single
+    fields:
+      phases:
+        name: "Phasen"
+        required: true
+        selector:
+          select:
+            options:
+              - "1"
+              - "3"
+    sequence:
+      - action: rest_command.keba_set_phases
+        data:
+          phases: "{{ phases | int }}"
+        response_variable: keba_response
+      - if:
+          - condition: template
+            value_template: "{{ keba_response.status != 200 }}"
+        then:
+          - stop: "KEBA Phasenumschaltung fehlgeschlagen: HTTP {{ keba_response.status }}"
+            error: true
+      - delay: "00:00:03"
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.keba_status
+            - sensor.keba_verwendete_phasen
+            - sensor.keba_angebotener_strom
+            - sensor.keba_wirkleistung
+
+  keba_maximalstrom_setzen:
+    alias: "KEBA Maximalstrom setzen"
+    description: "Setzt max_available_current. Eingabe erfolgt in Ampere."
+    mode: single
+    fields:
+      current_amp:
+        name: "Maximalstrom"
+        required: true
+        selector:
+          number:
+            min: 1
+            max: 32
+            step: 0.1
+            unit_of_measurement: "A"
+            mode: box
+    sequence:
+      - action: rest_command.keba_set_max_current
+        data:
+          current_ma: "{{ (current_amp | float * 1000) | round(0) | int }}"
+        response_variable: keba_response
+      - if:
+          - condition: template
+            value_template: "{{ keba_response.status != 200 }}"
+        then:
+          - stop: "KEBA Maximalstrom konnte nicht gesetzt werden: HTTP {{ keba_response.status }}"
+            error: true
+      - delay: "00:00:03"
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.keba_maximal_verfuegbarer_strom
+            - sensor.keba_angebotener_strom

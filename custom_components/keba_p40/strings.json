@@ -1,0 +1,172 @@
+{
+  "title": "KEBA P40",
+  "services": {
+    "set_charging_current_target": {
+      "name": "Set charging current target",
+      "description": "Select a charging profile by summed target current.",
+      "fields": {
+        "current": {
+          "name": "Target current",
+          "description": "Summed target current across the active phases."
+        }
+      }
+    },
+    "set_charging_power_target": {
+      "name": "Set charging power target",
+      "description": "Select a charging profile by an exact supported power value.",
+      "fields": {
+        "power": {
+          "name": "Target power",
+          "description": "One of the supported charging power steps."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to KEBA P40",
+        "description": "Enter the local REST API connection details.",
+        "data": {
+          "host": "IP address or hostname",
+          "port": "REST API port",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      },
+      "wallbox": {
+        "title": "Select wallbox",
+        "description": "Several wallboxes were found.",
+        "data": {
+          "serial": "Wallbox"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to KEBA P40",
+        "description": "Enter the current API password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the KEBA P40",
+      "invalid_auth": "Invalid password",
+      "no_wallboxes": "No wallbox was found",
+      "wallbox_not_found": "The configured wallbox was not found at this address",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This wallbox is already configured",
+      "reauth_successful": "Reauthentication was successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "KEBA P40 options",
+        "description": "Update the connection and polling settings.",
+        "data": {
+          "host": "IP address or hostname",
+          "port": "REST API port",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate",
+          "scan_interval": "Polling interval"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the KEBA P40",
+      "invalid_auth": "Invalid password",
+      "wallbox_not_found": "The configured wallbox was not found at this address",
+      "unknown": "Unexpected error"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "Status"
+      },
+      "phase_used": {
+        "name": "Connected phases"
+      },
+      "measured_active_phases": {
+        "name": "Measured active phases"
+      },
+      "current_offered": {
+        "name": "Offered current"
+      },
+      "total_active_power": {
+        "name": "Active power"
+      },
+      "max_asymmetrical_phase_current": {
+        "name": "Maximum asymmetric phase current"
+      },
+      "total_energy": {
+        "name": "Total energy"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "current_l1": {
+        "name": "Current L1"
+      },
+      "current_l2": {
+        "name": "Current L2"
+      },
+      "current_l3": {
+        "name": "Current L3"
+      },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
+      "hardware_max_current": {
+        "name": "Hardware maximum current"
+      },
+      "error_code": {
+        "name": "Error code"
+      }
+    },
+    "binary_sensor": {
+      "vehicle_connected": {
+        "name": "Vehicle connected"
+      },
+      "session_active": {
+        "name": "Session active"
+      }
+    },
+    "button": {
+      "increase_charging_power": {
+        "name": "Increase charging power"
+      },
+      "decrease_charging_power": {
+        "name": "Decrease charging power"
+      },
+      "start_charging": {
+        "name": "Start charging"
+      },
+      "stop_charging": {
+        "name": "Stop charging"
+      }
+    },
+    "number": {
+      "max_available_current": {
+        "name": "Maximum available current"
+      }
+    },
+    "select": {
+      "phases": {
+        "name": "Phases"
+      },
+      "target_charging_power": {
+        "name": "Target charging power"
+      }
+    }
+  }
+}

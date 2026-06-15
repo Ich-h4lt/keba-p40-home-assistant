@@ -1,0 +1,172 @@
+{
+  "title": "KEBA P40",
+  "services": {
+    "set_charging_current_target": {
+      "name": "Ziel-Ladestrom setzen",
+      "description": "Wählt ein Ladeprofil anhand des aufsummierten Zielstroms.",
+      "fields": {
+        "current": {
+          "name": "Zielstrom",
+          "description": "Aufsummierter Zielstrom über die aktiven Phasen."
+        }
+      }
+    },
+    "set_charging_power_target": {
+      "name": "Ziel-Ladeleistung setzen",
+      "description": "Wählt ein Ladeprofil anhand einer exakt unterstützten Leistungsstufe.",
+      "fields": {
+        "power": {
+          "name": "Zielleistung",
+          "description": "Eine der unterstützten Ladeleistungsstufen."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit KEBA P40 verbinden",
+        "description": "Gib die Zugangsdaten der lokalen REST-API ein.",
+        "data": {
+          "host": "IP-Adresse oder Hostname",
+          "port": "REST-API-Port",
+          "password": "Passwort",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        }
+      },
+      "wallbox": {
+        "title": "Wallbox auswählen",
+        "description": "Es wurden mehrere Wallboxen gefunden.",
+        "data": {
+          "serial": "Wallbox"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut mit KEBA P40 verbinden",
+        "description": "Gib das aktuelle API-Passwort ein.",
+        "data": {
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zur KEBA P40 fehlgeschlagen",
+      "invalid_auth": "Das Passwort ist ungültig",
+      "no_wallboxes": "Keine Wallbox gefunden",
+      "wallbox_not_found": "Die konfigurierte Wallbox wurde unter dieser Adresse nicht gefunden",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Diese Wallbox ist bereits eingerichtet",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "KEBA-P40-Optionen",
+        "description": "Verbindungs- und Polling-Einstellungen ändern.",
+        "data": {
+          "host": "IP-Adresse oder Hostname",
+          "port": "REST-API-Port",
+          "password": "Passwort",
+          "verify_ssl": "SSL-Zertifikat prüfen",
+          "scan_interval": "Polling-Intervall"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zur KEBA P40 fehlgeschlagen",
+      "invalid_auth": "Das Passwort ist ungültig",
+      "wallbox_not_found": "Die konfigurierte Wallbox wurde unter dieser Adresse nicht gefunden",
+      "unknown": "Unerwarteter Fehler"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "Status"
+      },
+      "phase_used": {
+        "name": "Angeschlossene Phasen"
+      },
+      "measured_active_phases": {
+        "name": "Gemessene aktive Phasen"
+      },
+      "current_offered": {
+        "name": "Angebotener Strom"
+      },
+      "total_active_power": {
+        "name": "Wirkleistung"
+      },
+      "max_asymmetrical_phase_current": {
+        "name": "Maximaler Phasenschiefstrom"
+      },
+      "total_energy": {
+        "name": "Gesamtenergie"
+      },
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "current_l1": {
+        "name": "Strom L1"
+      },
+      "current_l2": {
+        "name": "Strom L2"
+      },
+      "current_l3": {
+        "name": "Strom L3"
+      },
+      "voltage_l1": {
+        "name": "Spannung L1"
+      },
+      "voltage_l2": {
+        "name": "Spannung L2"
+      },
+      "voltage_l3": {
+        "name": "Spannung L3"
+      },
+      "hardware_max_current": {
+        "name": "Hardware-Maximalstrom"
+      },
+      "error_code": {
+        "name": "Fehlercode"
+      }
+    },
+    "binary_sensor": {
+      "vehicle_connected": {
+        "name": "Fahrzeug verbunden"
+      },
+      "session_active": {
+        "name": "Sitzung aktiv"
+      }
+    },
+    "button": {
+      "increase_charging_power": {
+        "name": "Ladeleistung erhöhen"
+      },
+      "decrease_charging_power": {
+        "name": "Ladeleistung verringern"
+      },
+      "start_charging": {
+        "name": "Laden starten"
+      },
+      "stop_charging": {
+        "name": "Laden stoppen"
+      }
+    },
+    "number": {
+      "max_available_current": {
+        "name": "Maximal verfügbarer Strom"
+      }
+    },
+    "select": {
+      "phases": {
+        "name": "Phasen"
+      },
+      "target_charging_power": {
+        "name": "Ziel-Ladeleistung"
+      }
+    }
+  }
+}

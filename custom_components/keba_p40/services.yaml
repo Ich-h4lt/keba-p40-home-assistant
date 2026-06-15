@@ -1,0 +1,45 @@
+set_charging_current_target:
+  name: Set charging current target
+  description: >-
+    Selects a charging profile by summed target current. Values from 6 to
+    16 A use one phase. Starting at 18 A, multiples of three use three phases.
+  target:
+    entity:
+      integration: keba_p40
+      domain: select
+  fields:
+    current:
+      name: Target current
+      description: Summed target current across the active phases.
+      required: true
+      example: 18
+      selector:
+        number:
+          min: 6
+          max: 96
+          step: 1
+          unit_of_measurement: A
+          mode: box
+
+set_charging_power_target:
+  name: Set charging power target
+  description: >-
+    Selects a charging profile by an exact supported charging power in kW.
+    Only the fixed values generated from the one-ampere profiles are accepted.
+  target:
+    entity:
+      integration: keba_p40
+      domain: select
+  fields:
+    power:
+      name: Target power
+      description: One of the supported charging power steps.
+      required: true
+      example: 4.2
+      selector:
+        number:
+          min: 1.4
+          max: 22.2
+          step: 0.1
+          unit_of_measurement: kW
+          mode: box
