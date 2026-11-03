@@ -1,0 +1,292 @@
+{
+  "title": "KEBA P40",
+  "services": {
+    "set_charging_current_target": {
+      "name": "Set charging current target",
+      "description": "Select a charging profile by summed target current.",
+      "fields": {
+        "current": {
+          "name": "Target current",
+          "description": "Summed target current across the active phases."
+        }
+      }
+    },
+    "set_charging_power_target": {
+      "name": "Set charging power target",
+      "description": "Select a charging profile by an exact supported power value.",
+      "fields": {
+        "power": {
+          "name": "Target power",
+          "description": "One of the supported charging power steps."
+        }
+      }
+    },
+    "start_charging": {
+      "name": "Start charging",
+      "description": "Starts charging without an RFID card, like the Start charging button.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "The KEBA P40 to start."
+        }
+      }
+    },
+    "start_charging_with_token": {
+      "name": "Start charging with card ID",
+      "description": "Starts charging authorized by a specific RFID card ID. The ID given here appears in automations and traces; the buttons of configured charging cards avoid that.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "The KEBA P40 to start."
+        },
+        "token_id": {
+          "name": "Card ID",
+          "description": "RFID card ID as reported by the wallbox."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to KEBA P40",
+        "description": "Enter the local REST API connection details.",
+        "data": {
+          "host": "IP address or hostname",
+          "port": "REST API port",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      },
+      "wallbox": {
+        "title": "Select wallbox",
+        "description": "Several wallboxes were found.",
+        "data": {
+          "serial": "Wallbox"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to KEBA P40",
+        "description": "Enter the current API password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the KEBA P40",
+      "invalid_auth": "Invalid password",
+      "no_wallboxes": "No wallbox was found",
+      "wallbox_not_found": "The configured wallbox was not found at this address",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This wallbox is already configured",
+      "reauth_successful": "Reauthentication was successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "KEBA P40 options",
+        "description": "Update the connection and polling settings.",
+        "data": {
+          "host": "IP address or hostname",
+          "port": "REST API port",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate",
+          "scan_interval": "Polling interval"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the KEBA P40",
+      "invalid_auth": "Invalid password",
+      "wallbox_not_found": "The configured wallbox was not found at this address",
+      "unknown": "Unexpected error"
+    }
+  },
+  "config_subentries": {
+    "card": {
+      "entry_type": "Charging card",
+      "initiate_flow": {
+        "user": "Add charging card",
+        "reconfigure": "Edit charging card"
+      },
+      "step": {
+        "user": {
+          "title": "Add charging card",
+          "description": "Choose a card the wallbox already knows, or enter a card ID.",
+          "menu_options": {
+            "pick": "Card known to the wallbox",
+            "manual": "Enter card ID"
+          }
+        },
+        "pick": {
+          "title": "Card known to the wallbox",
+          "description": "Card IDs are shortened and shown with the date of their last use.",
+          "data": {
+            "card": "Card",
+            "name": "Comment"
+          },
+          "data_description": {
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        },
+        "manual": {
+          "title": "Enter card ID",
+          "description": "Enter the RFID card ID exactly as the wallbox reports it.",
+          "data": {
+            "token_id": "Card ID",
+            "name": "Comment"
+          },
+          "data_description": {
+            "token_id": "Often differs from the number printed on the card.",
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit charging card",
+          "description": "Card {card}",
+          "data": {
+            "name": "Comment"
+          },
+          "data_description": {
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        }
+      },
+      "error": {
+        "invalid_name": "Enter a comment with up to 40 characters",
+        "invalid_token_id": "Enter 1 to 36 characters without spaces",
+        "invalid_card": "Choose a card from the list",
+        "already_configured": "This card is already configured"
+      },
+      "abort": {
+        "already_configured": "This card is already configured"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "Status"
+      },
+      "phase_used": {
+        "name": "Connected phases"
+      },
+      "measured_active_phases": {
+        "name": "Measured active phases"
+      },
+      "current_offered": {
+        "name": "Offered current"
+      },
+      "total_active_power": {
+        "name": "Active power"
+      },
+      "max_asymmetrical_phase_current": {
+        "name": "Maximum asymmetric phase current"
+      },
+      "total_energy": {
+        "name": "Total energy"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "current_l1": {
+        "name": "Current L1"
+      },
+      "current_l2": {
+        "name": "Current L2"
+      },
+      "current_l3": {
+        "name": "Current L3"
+      },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
+      "hardware_max_current": {
+        "name": "Hardware maximum current"
+      },
+      "error_code": {
+        "name": "Error code"
+      },
+      "session_card": {
+        "name": "Session charging card",
+        "state": {
+          "no_card": "No card",
+          "unknown_card": "Unknown card"
+        },
+        "state_attributes": {
+          "session_status": {
+            "name": "Session status"
+          },
+          "session_start": {
+            "name": "Session start"
+          },
+          "card_hint": {
+            "name": "Card hint"
+          }
+        }
+      }
+    },
+    "binary_sensor": {
+      "vehicle_connected": {
+        "name": "Vehicle connected"
+      },
+      "session_active": {
+        "name": "Session active"
+      }
+    },
+    "button": {
+      "increase_charging_power": {
+        "name": "Increase charging power"
+      },
+      "decrease_charging_power": {
+        "name": "Decrease charging power"
+      },
+      "start_charging": {
+        "name": "Start charging"
+      },
+      "stop_charging": {
+        "name": "Stop charging"
+      },
+      "start_charging_card": {
+        "name": "Start charging ({card})"
+      }
+    },
+    "number": {
+      "max_available_current": {
+        "name": "Maximum available current"
+      }
+    },
+    "select": {
+      "phases": {
+        "name": "Phases"
+      },
+      "target_charging_power": {
+        "name": "Target charging power"
+      }
+    }
+  },
+  "exceptions": {
+    "start_charging_failed": {
+      "message": "Starting the charge failed: {error}"
+    },
+    "entry_not_found": {
+      "message": "No KEBA P40 is set up with this ID"
+    },
+    "entry_not_loaded": {
+      "message": "The KEBA P40 is not loaded"
+    },
+    "invalid_token_id": {
+      "message": "The card ID must have 1 to 36 characters without spaces"
+    }
+  }
+}

@@ -43,5 +43,7 @@ jobs:
             custom_components/keba_p40/strings.json >/dev/null
           python -m json.tool \
             custom_components/keba_p40/translations/de.json >/dev/null
+          python -m json.tool \
+            custom_components/keba_p40/translations/en.json >/dev/null
           python -m json.tool hacs.json >/dev/null
           python -m json.tool api_docs/keba-openapi.json >/dev/null

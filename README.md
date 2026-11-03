@@ -60,6 +60,12 @@ the shell history.
 - Target charging power control with automatic phase/current selection
 - Buttons for switching to the next higher or lower charging profile
 - Buttons for starting and stopping charging
+- Charging cards with a comment, picked from the cards the wallbox knows or
+  entered by hand
+- One **Start charging (comment)** button per charging card
+- **Session charging card** sensor showing which card the current or last
+  session uses
+- Actions for starting charging with or without a card ID
 - Service for selecting an exact supported charging power in kW
 - Service for selecting a profile by summed charging current
 - Selectable one-phase or three-phase operation
@@ -260,6 +266,8 @@ the isolated wallbox network before applying this configuration.
 
 ## Installation
 
+The integration requires Home Assistant 2025.4 or newer.
+
 ### HACS
 
 Until this repository is included in the default HACS catalog, add it as a
@@ -297,6 +305,7 @@ The resulting structure must look like this:
   api.py
   binary_sensor.py
   button.py
+  cards.py
   charging.py
   config_flow.py
   const.py
@@ -306,9 +315,11 @@ The resulting structure must look like this:
   number.py
   select.py
   sensor.py
+  services.py
   services.yaml
   strings.json
   translations/de.json
+  translations/en.json
 ```
 
 Restart Home Assistant after copying the files.
@@ -337,6 +348,46 @@ Connection settings can later be changed under the integration's
 If authentication fails, Home Assistant starts a reauthentication flow and
 asks for the current password.
 
+## Charging cards
+
+On wallboxes that require authorization, for example a DKV edition that
+authorizes sessions through OCPP, a session is only billed to a card if the
+start command names the card's RFID ID. **Start charging** always starts
+without a card.
+
+To start with a card, add it as a charging card:
+
+1. Open **Settings > Devices & services > KEBA P40**.
+2. Select **Add charging card**.
+3. Choose a card the wallbox already knows, or enter the card ID. Known cards
+   come from the wallbox token list and its last 50 sessions. Their IDs are
+   shortened, for example `04…F6`, and shown with the date of their last use.
+4. Enter a comment, for example `DKV`.
+
+Each card gets its own button, for example **Start charging (DKV)**. Pressing
+it starts charging authorized by that card:
+
+```yaml
+actions:
+  - action: button.press
+    target:
+      entity_id: button.keba_p40_start_charging_dkv
+```
+
+Cards can be renamed or deleted on the integration page. Deleting a card also
+removes its button.
+
+The card ID is stored only in the integration configuration, like the
+password. It is not part of entity IDs, unique IDs, states, attributes or log
+messages, and the integration shows it only shortened. Automations use the
+card's button and never need the ID.
+
+The **Session charging card** sensor shows which card the current or last
+session uses: the card's comment, **No card**, or **Unknown card** with a
+shortened `card_hint` attribute. The integration reads the session list only
+at startup, when a session starts or ends, and while a new session is not yet
+listed, at most every 30 seconds.
+
 ## Entities
 
 The integration creates normal Home Assistant entities. The controls can
@@ -348,6 +399,7 @@ be changed directly from a dashboard or used in automations:
 - `button.*increase_charging_power`
 - `button.*decrease_charging_power`
 - `button.*start_charging`
+- `button.*start_charging_<comment>`, one per charging card
 - `button.*stop_charging`
 
 Example automation actions:
@@ -393,9 +445,25 @@ actions:
   - action: button.press
     target:
       entity_id: button.keba_p40_stop_charging
+
+  - action: keba_p40.start_charging
+    data:
+      config_entry_id: 01JABCDEFGHJKMNPQRSTVWXYZ0
+
+  - action: keba_p40.start_charging_with_token
+    data:
+      config_entry_id: 01JABCDEFGHJKMNPQRSTVWXYZ0
+      token_id: A2D80F8E
 ```
 
 Actual entity IDs depend on the wallbox name and may differ from this example.
+In the action editor, `config_entry_id` is selected from a list of configured
+wallboxes.
+
+`keba_p40.start_charging` always starts without a card.
+`keba_p40.start_charging_with_token` passes the card ID directly, so the ID
+appears in the automation and its traces. Prefer the button of a configured
+charging card.
 
 ## Dashboard
 
@@ -430,7 +498,9 @@ Typical entities are:
 | Increase charging power | `button` | `button.keba_p40_increase_charging_power` |
 | Decrease charging power | `button` | `button.keba_p40_decrease_charging_power` |
 | Start charging | `button` | `button.keba_p40_start_charging` |
+| Start charging with a card | `button` | `button.keba_p40_start_charging_dkv` |
 | Stop charging | `button` | `button.keba_p40_stop_charging` |
+| Session charging card | `sensor` | `sensor.keba_p40_session_charging_card` |
 
 Entity IDs are generated from the device and entity names. Always confirm the
 actual IDs on the device page before using the examples below.
@@ -446,6 +516,9 @@ For example:
 ```text
 keba_p40_12345678_total_active_power
 ```
+
+Card buttons use the internal ID of the charging card instead of the card ID:
+`keba_p40_{serialNumber}_start_charging_card_{cardEntryId}`.
 
 ### Entities card
 

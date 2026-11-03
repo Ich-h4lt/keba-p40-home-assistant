@@ -23,7 +23,10 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
+from .cards import configured_token_ids, mask_token_id
+from .const import SESSION_CARD_NONE, SESSION_CARD_UNKNOWN
 from .coordinator import KebaDataUpdateCoordinator
 from .entity import KebaEntity
 
@@ -219,7 +222,10 @@ async def async_setup_entry(
     """Set up KEBA sensors."""
     coordinator: KebaDataUpdateCoordinator = entry.runtime_data
     async_add_entities(
-        KebaSensor(coordinator, description) for description in SENSORS
+        [
+            *(KebaSensor(coordinator, description) for description in SENSORS),
+            KebaSessionCardSensor(coordinator, configured_token_ids(entry)),
+        ]
     )
 
 
@@ -240,3 +246,54 @@ class KebaSensor(KebaEntity, SensorEntity):
     def native_value(self) -> Any:
         """Return the sensor value."""
         return self.entity_description.value_fn(self.coordinator.data)
+
+
+class KebaSessionCardSensor(KebaEntity, SensorEntity):
+    """Show which charging card the current or last session uses."""
+
+    _attr_translation_key = "session_card"
+    _attr_device_class = SensorDeviceClass.ENUM
+
+    def __init__(
+        self,
+        coordinator: KebaDataUpdateCoordinator,
+        cards: dict[str, str],
+    ) -> None:
+        super().__init__(coordinator, "session_card")
+        self._cards = cards
+        self._attr_options = list(
+            dict.fromkeys(
+                [*cards.values(), SESSION_CARD_NONE, SESSION_CARD_UNKNOWN]
+            )
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the card comment, or that no or an unknown card was used."""
+        session = self.coordinator.session
+        if session is None:
+            return None
+        token_id = session.get("tokenId")
+        if not token_id:
+            return SESSION_CARD_NONE
+        return self._cards.get(str(token_id), SESSION_CARD_UNKNOWN)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return the session status and start, and a hint for unknown cards."""
+        session = self.coordinator.session
+        if session is None:
+            return None
+        start = session.get("startDate")
+        attributes: dict[str, Any] = {
+            "session_status": session.get("status"),
+            "session_start": (
+                dt_util.utc_from_timestamp(start / 1000)
+                if isinstance(start, (int, float)) and start > 0
+                else None
+            ),
+        }
+        token_id = session.get("tokenId")
+        if token_id and str(token_id) not in self._cards:
+            attributes["card_hint"] = mask_token_id(str(token_id))
+        return attributes

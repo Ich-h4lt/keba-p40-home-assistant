@@ -7,14 +7,19 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_PASSWORD
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
 )
+from homeassistant.util import dt as dt_util
 
 from .api import (
     KebaApi,
@@ -22,15 +27,24 @@ from .api import (
     KebaAuthenticationError,
     KebaConnectionError,
 )
+from .cards import (
+    KnownCard,
+    async_get_known_cards,
+    configured_token_ids,
+    is_valid_token_id,
+    mask_token_id,
+)
 from .const import (
     CONF_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SERIAL,
+    CONF_TOKEN_ID,
     CONF_VERIFY_SSL,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USERNAME,
     DOMAIN,
+    SUBENTRY_TYPE_CARD,
 )
 
 PASSWORD_SELECTOR = TextSelector(
@@ -39,6 +53,9 @@ PASSWORD_SELECTOR = TextSelector(
         autocomplete="current-password",
     )
 )
+
+CONF_CARD = "card"
+CARD_NAME_MAX_LENGTH = 40
 
 
 class KebaP40ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -58,6 +75,15 @@ class KebaP40ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         """Return the options flow."""
         return KebaP40OptionsFlow()
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls,
+        config_entry: config_entries.ConfigEntry,
+    ) -> dict[str, type[config_entries.ConfigSubentryFlow]]:
+        """Return the subentry types: charging cards."""
+        return {SUBENTRY_TYPE_CARD: KebaCardSubentryFlow}
 
     async def async_step_user(
         self,
@@ -285,3 +311,158 @@ class KebaP40OptionsFlow(config_entries.OptionsFlow):
             data_schema=schema,
             errors=errors,
         )
+
+
+def _validate_card_name(name: str) -> str | None:
+    """Return the stripped comment, or None if it is empty or too long."""
+    name = name.strip()
+    return name if 0 < len(name) <= CARD_NAME_MAX_LENGTH else None
+
+
+class KebaCardSubentryFlow(config_entries.ConfigSubentryFlow):
+    """Add or edit a charging card.
+
+    The token id is stored only in the subentry data. It is never put into a
+    title, a unique id or a form option value, and shown only shortened.
+    """
+
+    def __init__(self) -> None:
+        self._known_cards: list[KnownCard] = []
+
+    async def async_step_user(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.SubentryFlowResult:
+        """Offer the cards known to the wallbox or manual entry."""
+        entry = self._get_entry()
+        configured = configured_token_ids(entry)
+        known: list[KnownCard] = []
+        if entry.state is config_entries.ConfigEntryState.LOADED:
+            try:
+                known = await async_get_known_cards(entry.runtime_data.api)
+            except (KebaApiError, ValueError):
+                known = []
+        self._known_cards = [
+            card for card in known if card.token_id not in configured
+        ]
+        if not self._known_cards:
+            return await self.async_step_manual()
+        return self.async_show_menu(
+            step_id="user",
+            menu_options=["pick", "manual"],
+        )
+
+    async def async_step_pick(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.SubentryFlowResult:
+        """Choose one of the cards known to the wallbox."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name = _validate_card_name(user_input[CONF_NAME])
+            index = int(user_input[CONF_CARD])
+            if name is None:
+                errors[CONF_NAME] = "invalid_name"
+            elif not 0 <= index < len(self._known_cards):
+                errors[CONF_CARD] = "invalid_card"
+            else:
+                return self._async_create_card(
+                    self._known_cards[index].token_id, name
+                )
+
+        options = [
+            SelectOptionDict(
+                value=str(index),
+                label=(
+                    f"{mask_token_id(card.token_id)} · "
+                    f"{dt_util.as_local(card.last_used).date().isoformat()}"
+                    if card.last_used
+                    else mask_token_id(card.token_id)
+                ),
+            )
+            for index, card in enumerate(self._known_cards)
+        ]
+        return self.async_show_form(
+            step_id="pick",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_CARD, default="0"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Required(CONF_NAME): str,
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_manual(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.SubentryFlowResult:
+        """Enter the id of a card."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            token_id = user_input[CONF_TOKEN_ID].strip()
+            name = _validate_card_name(user_input[CONF_NAME])
+            if not is_valid_token_id(token_id):
+                errors[CONF_TOKEN_ID] = "invalid_token_id"
+            elif token_id in configured_token_ids(self._get_entry()):
+                errors[CONF_TOKEN_ID] = "already_configured"
+            elif name is None:
+                errors[CONF_NAME] = "invalid_name"
+            else:
+                return self._async_create_card(token_id, name)
+
+        return self.async_show_form(
+            step_id="manual",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_TOKEN_ID): str,
+                    vol.Required(CONF_NAME): str,
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.SubentryFlowResult:
+        """Change the comment of a card."""
+        subentry = self._get_reconfigure_subentry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name = _validate_card_name(user_input[CONF_NAME])
+            if name is None:
+                errors[CONF_NAME] = "invalid_name"
+            else:
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    subentry,
+                    title=name,
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_NAME, default=subentry.title): str}
+            ),
+            description_placeholders={
+                "card": mask_token_id(subentry.data[CONF_TOKEN_ID])
+            },
+            errors=errors,
+        )
+
+    @callback
+    def _async_create_card(
+        self,
+        token_id: str,
+        name: str,
+    ) -> config_entries.SubentryFlowResult:
+        """Store the card, unless another subentry already has its id."""
+        if token_id in configured_token_ids(self._get_entry()):
+            return self.async_abort(reason="already_configured")
+        return self.async_create_entry(title=name, data={CONF_TOKEN_ID: token_id})

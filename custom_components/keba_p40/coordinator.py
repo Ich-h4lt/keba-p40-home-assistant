@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 import logging
+import time
 from typing import Any
 
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -16,6 +17,9 @@ from .charging import MIN_CHARGING_CURRENT_A, ChargingProfile, charging_power_kw
 from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+SESSION_LIMIT = 5
+SESSION_RETRY_SECONDS = 30
 
 
 class KebaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -38,6 +42,10 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api = api
         self.serial = serial
         self.phase_target: int | None = None
+        self.session: dict[str, Any] | None = None
+        self._session_active: bool | None = None
+        self._session_checked: float | None = None
+        self._session_loaded = False
         self._store = Store[dict[str, int]](
             hass,
             STORAGE_VERSION,
@@ -73,7 +81,72 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for item in load_management.get("configs", [])
             if isinstance(item, dict) and "key" in item
         }
+        await self._async_refresh_session(wallbox)
         return {"wallbox": wallbox, "configs": configs}
+
+    async def _async_refresh_session(self, wallbox: dict[str, Any]) -> None:
+        """Read the latest session of this wallbox when it may have changed.
+
+        The session list is only needed to tell which card a session uses. It
+        is read at startup and when a session starts or ends. While the last
+        read failed or an active session is not listed yet, it is read again
+        at most every 30 seconds.
+        """
+        active = bool(wallbox.get("sessionActive"))
+        changed = active != self._session_active
+        self._session_active = active
+        stale = not self._session_loaded or (
+            active
+            and (self.session is None or self.session.get("status") == "CLOSED")
+        )
+        now = time.monotonic()
+        due = (
+            self._session_checked is None
+            or now - self._session_checked >= SESSION_RETRY_SECONDS
+        )
+        if not changed and not (stale and due):
+            return
+
+        self._session_checked = now
+        try:
+            sessions = await self.api.async_get_sessions(SESSION_LIMIT)
+        except (KebaApiError, ValueError) as err:
+            _LOGGER.debug("Reading the latest session failed: %s", err)
+            return
+        self._session_loaded = True
+        self.session = next(
+            (
+                session
+                for session in sessions
+                if str(session.get("wallboxSerialNumber") or self.serial)
+                == self.serial
+            ),
+            None,
+        )
+
+    async def async_start_charging(self) -> None:
+        """Start charging without an RFID token."""
+        try:
+            await self.api.async_start_charging(self.serial)
+        except KebaApiError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="start_charging_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        await self.async_request_refresh()
+
+    async def async_start_charging_with_token(self, token_id: str) -> None:
+        """Start charging authorized by a specific RFID token."""
+        try:
+            await self.api.async_start_charging_with_token(self.serial, token_id)
+        except KebaApiError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="start_charging_failed",
+                translation_placeholders={"error": str(err)},
+            ) from None
+        await self.async_request_refresh()
 
     async def async_apply_charging_profile(
         self,

@@ -153,11 +153,57 @@ class KebaApi:
         )
 
     async def async_start_charging(self, serial: str) -> None:
-        """Start charging on a wallbox."""
+        """Start charging on a wallbox without an RFID token."""
         await self.async_request(
             "POST",
             f"/v2/wallboxes/{serial}/start-charging",
         )
+
+    async def async_start_charging_with_token(
+        self,
+        serial: str,
+        token_id: str,
+    ) -> None:
+        """Start charging on a wallbox, authorized by a specific RFID token."""
+        try:
+            await self.async_request(
+                "POST",
+                f"/v2/wallboxes/{serial}/start-charging",
+                params={"id": token_id},
+            )
+        except KebaApiError as err:
+            # The underlying aiohttp error holds the request URL including the
+            # token id. Drop it so the id cannot end up in a log or traceback.
+            raise type(err)(str(err)) from None
+
+    async def async_get_rfid_tokens(self) -> list[dict[str, Any]]:
+        """Return the RFID tokens stored on the wallbox."""
+        body = await self.async_request("GET", "/v2/rfids")
+        if not isinstance(body, dict):
+            raise KebaApiError("Unexpected response from /v2/rfids")
+        return [
+            token for token in body.get("tokens") or [] if isinstance(token, dict)
+        ]
+
+    async def async_get_sessions(self, limit: int) -> list[dict[str, Any]]:
+        """Return the latest charging sessions, newest first."""
+        body = await self.async_request(
+            "GET",
+            "/v2/sessions",
+            params={
+                "offset": 0,
+                "limit": limit,
+                "orderField": "SESSION_START_DATE",
+                "orderDir": "DESC",
+            },
+        )
+        if not isinstance(body, dict):
+            raise KebaApiError("Unexpected response from /v2/sessions")
+        return [
+            session
+            for session in body.get("sessions") or []
+            if isinstance(session, dict)
+        ]
 
     async def async_stop_charging(self, serial: str) -> None:
         """Stop charging on a wallbox."""

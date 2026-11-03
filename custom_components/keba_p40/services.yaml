@@ -43,3 +43,38 @@ set_charging_power_target:
           step: 0.1
           unit_of_measurement: kW
           mode: box
+
+start_charging:
+  name: Start charging
+  description: >-
+    Starts charging without an RFID card, like the Start charging button.
+  fields:
+    config_entry_id:
+      name: Wallbox
+      description: The KEBA P40 to start.
+      required: true
+      selector:
+        config_entry:
+          integration: keba_p40
+
+start_charging_with_token:
+  name: Start charging with card ID
+  description: >-
+    Starts charging authorized by a specific RFID card ID. The ID given here
+    appears in automations and traces; the buttons of configured charging
+    cards avoid that.
+  fields:
+    config_entry_id:
+      name: Wallbox
+      description: The KEBA P40 to start.
+      required: true
+      selector:
+        config_entry:
+          integration: keba_p40
+    token_id:
+      name: Card ID
+      description: RFID card ID as reported by the wallbox.
+      required: true
+      example: A2D80F8E
+      selector:
+        text:

@@ -20,6 +20,30 @@
           "description": "Eine der unterstützten Ladeleistungsstufen."
         }
       }
+    },
+    "start_charging": {
+      "name": "Laden starten",
+      "description": "Startet das Laden ohne RFID-Karte, wie der Button „Laden starten“.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "Die KEBA P40, an der das Laden starten soll."
+        }
+      }
+    },
+    "start_charging_with_token": {
+      "name": "Laden mit Karten-ID starten",
+      "description": "Startet das Laden mit einer bestimmten RFID-Karten-ID. Die ID steht dann in Automationen und Traces; die Buttons angelegter Ladekarten vermeiden das.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "Die KEBA P40, an der das Laden starten soll."
+        },
+        "token_id": {
+          "name": "Karten-ID",
+          "description": "RFID-Karten-ID, wie die Wallbox sie meldet."
+        }
+      }
     }
   },
   "config": {
@@ -82,6 +106,67 @@
       "unknown": "Unerwarteter Fehler"
     }
   },
+  "config_subentries": {
+    "card": {
+      "entry_type": "Ladekarte",
+      "initiate_flow": {
+        "user": "Ladekarte hinzufügen",
+        "reconfigure": "Ladekarte bearbeiten"
+      },
+      "step": {
+        "user": {
+          "title": "Ladekarte hinzufügen",
+          "description": "Wähle eine Karte, die die Wallbox schon kennt, oder gib eine Karten-ID ein.",
+          "menu_options": {
+            "pick": "Karte, die die Wallbox kennt",
+            "manual": "Karten-ID eingeben"
+          }
+        },
+        "pick": {
+          "title": "Karte, die die Wallbox kennt",
+          "description": "Die Karten-IDs sind gekürzt, dahinter steht der Tag der letzten Nutzung.",
+          "data": {
+            "card": "Karte",
+            "name": "Kommentar"
+          },
+          "data_description": {
+            "name": "Wird Teil des Button-Namens, z. B. DKV."
+          }
+        },
+        "manual": {
+          "title": "Karten-ID eingeben",
+          "description": "Gib die RFID-Karten-ID genau so ein, wie die Wallbox sie meldet.",
+          "data": {
+            "token_id": "Karten-ID",
+            "name": "Kommentar"
+          },
+          "data_description": {
+            "token_id": "Weicht oft von der Nummer ab, die auf der Karte steht.",
+            "name": "Wird Teil des Button-Namens, z. B. DKV."
+          }
+        },
+        "reconfigure": {
+          "title": "Ladekarte bearbeiten",
+          "description": "Karte {card}",
+          "data": {
+            "name": "Kommentar"
+          },
+          "data_description": {
+            "name": "Wird Teil des Button-Namens, z. B. DKV."
+          }
+        }
+      },
+      "error": {
+        "invalid_name": "Gib einen Kommentar mit höchstens 40 Zeichen ein",
+        "invalid_token_id": "Gib 1 bis 36 Zeichen ohne Leerzeichen ein",
+        "invalid_card": "Wähle eine Karte aus der Liste",
+        "already_configured": "Diese Karte ist bereits angelegt"
+      },
+      "abort": {
+        "already_configured": "Diese Karte ist bereits angelegt"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "state": {
@@ -131,6 +216,24 @@
       },
       "error_code": {
         "name": "Fehlercode"
+      },
+      "session_card": {
+        "name": "Ladekarte der Sitzung",
+        "state": {
+          "no_card": "Ohne Karte",
+          "unknown_card": "Unbekannte Karte"
+        },
+        "state_attributes": {
+          "session_status": {
+            "name": "Sitzungsstatus"
+          },
+          "session_start": {
+            "name": "Sitzungsbeginn"
+          },
+          "card_hint": {
+            "name": "Kartenhinweis"
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -153,6 +256,9 @@
       },
       "stop_charging": {
         "name": "Laden stoppen"
+      },
+      "start_charging_card": {
+        "name": "Laden starten ({card})"
       }
     },
     "number": {
@@ -167,6 +273,20 @@
       "target_charging_power": {
         "name": "Ziel-Ladeleistung"
       }
+    }
+  },
+  "exceptions": {
+    "start_charging_failed": {
+      "message": "Ladestart fehlgeschlagen: {error}"
+    },
+    "entry_not_found": {
+      "message": "Unter dieser ID ist keine KEBA P40 eingerichtet"
+    },
+    "entry_not_loaded": {
+      "message": "Die KEBA P40 ist nicht geladen"
+    },
+    "invalid_token_id": {
+      "message": "Die Karten-ID muss 1 bis 36 Zeichen ohne Leerzeichen haben"
     }
   }
 }

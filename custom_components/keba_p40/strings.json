@@ -20,6 +20,30 @@
           "description": "One of the supported charging power steps."
         }
       }
+    },
+    "start_charging": {
+      "name": "Start charging",
+      "description": "Starts charging without an RFID card, like the Start charging button.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "The KEBA P40 to start."
+        }
+      }
+    },
+    "start_charging_with_token": {
+      "name": "Start charging with card ID",
+      "description": "Starts charging authorized by a specific RFID card ID. The ID given here appears in automations and traces; the buttons of configured charging cards avoid that.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wallbox",
+          "description": "The KEBA P40 to start."
+        },
+        "token_id": {
+          "name": "Card ID",
+          "description": "RFID card ID as reported by the wallbox."
+        }
+      }
     }
   },
   "config": {
@@ -82,6 +106,67 @@
       "unknown": "Unexpected error"
     }
   },
+  "config_subentries": {
+    "card": {
+      "entry_type": "Charging card",
+      "initiate_flow": {
+        "user": "Add charging card",
+        "reconfigure": "Edit charging card"
+      },
+      "step": {
+        "user": {
+          "title": "Add charging card",
+          "description": "Choose a card the wallbox already knows, or enter a card ID.",
+          "menu_options": {
+            "pick": "Card known to the wallbox",
+            "manual": "Enter card ID"
+          }
+        },
+        "pick": {
+          "title": "Card known to the wallbox",
+          "description": "Card IDs are shortened and shown with the date of their last use.",
+          "data": {
+            "card": "Card",
+            "name": "Comment"
+          },
+          "data_description": {
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        },
+        "manual": {
+          "title": "Enter card ID",
+          "description": "Enter the RFID card ID exactly as the wallbox reports it.",
+          "data": {
+            "token_id": "Card ID",
+            "name": "Comment"
+          },
+          "data_description": {
+            "token_id": "Often differs from the number printed on the card.",
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit charging card",
+          "description": "Card {card}",
+          "data": {
+            "name": "Comment"
+          },
+          "data_description": {
+            "name": "Becomes part of the button name, for example DKV."
+          }
+        }
+      },
+      "error": {
+        "invalid_name": "Enter a comment with up to 40 characters",
+        "invalid_token_id": "Enter 1 to 36 characters without spaces",
+        "invalid_card": "Choose a card from the list",
+        "already_configured": "This card is already configured"
+      },
+      "abort": {
+        "already_configured": "This card is already configured"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "state": {
@@ -131,6 +216,24 @@
       },
       "error_code": {
         "name": "Error code"
+      },
+      "session_card": {
+        "name": "Session charging card",
+        "state": {
+          "no_card": "No card",
+          "unknown_card": "Unknown card"
+        },
+        "state_attributes": {
+          "session_status": {
+            "name": "Session status"
+          },
+          "session_start": {
+            "name": "Session start"
+          },
+          "card_hint": {
+            "name": "Card hint"
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -153,6 +256,9 @@
       },
       "stop_charging": {
         "name": "Stop charging"
+      },
+      "start_charging_card": {
+        "name": "Start charging ({card})"
       }
     },
     "number": {
@@ -167,6 +273,20 @@
       "target_charging_power": {
         "name": "Target charging power"
       }
+    }
+  },
+  "exceptions": {
+    "start_charging_failed": {
+      "message": "Starting the charge failed: {error}"
+    },
+    "entry_not_found": {
+      "message": "No KEBA P40 is set up with this ID"
+    },
+    "entry_not_loaded": {
+      "message": "The KEBA P40 is not loaded"
+    },
+    "invalid_token_id": {
+      "message": "The card ID must have 1 to 36 characters without spaces"
     }
   }
 }
