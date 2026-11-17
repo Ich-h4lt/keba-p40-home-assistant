@@ -345,6 +345,11 @@ Connection settings can later be changed under the integration's
 - SSL certificate verification
 - Polling interval from 5 to 300 seconds
 
+Each poll reads the wallbox status and the load management one after another
+over the same HTTPS connection. The wallbox closes an idle connection after
+about 10 seconds, so an interval below that (for example 5 seconds) keeps one
+connection open and avoids a new TLS handshake on every poll.
+
 If authentication fails, Home Assistant starts a reauthentication flow and
 asks for the current password.
 

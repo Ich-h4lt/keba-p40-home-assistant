@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
 import logging
 import time
@@ -67,10 +66,11 @@ class KebaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            wallbox, load_management = await asyncio.gather(
-                self.api.async_get_wallbox(self.serial),
-                self.api.async_get_load_management(),
-            )
+            # One after another, not in parallel: the requests then share a
+            # single HTTPS connection, which the wallbox keeps open between
+            # polls as long as the scan interval is below its idle timeout.
+            wallbox = await self.api.async_get_wallbox(self.serial)
+            load_management = await self.api.async_get_load_management()
         except KebaAuthenticationError as err:
             raise ConfigEntryAuthFailed from err
         except KebaApiError as err:
