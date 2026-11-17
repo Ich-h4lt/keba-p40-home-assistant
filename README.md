@@ -116,9 +116,8 @@ The **Target charging power** select offers fixed profiles in 1 A increments.
 Each option sets `max_available_current` and switches between one and three
 phases as required. Arbitrary intermediate values cannot be selected.
 
-The wallbox applies phase and current changes asynchronously. With the default
-10-second polling interval, the final state is normally reflected in Home
-Assistant after two or three polling cycles. Reducing the polling interval does
+The wallbox applies phase and current changes asynchronously. The final state
+is normally reflected in Home Assistant after 20 to 30 seconds. Reducing the polling interval does
 not speed up the switching process inside the wallbox.
 
 The REST API does not expose the current phase-toggle state. The integration
@@ -346,9 +345,15 @@ Connection settings can later be changed under the integration's
 - Polling interval from 5 to 300 seconds
 
 Each poll reads the wallbox status and the load management one after another
-over the same HTTPS connection. The wallbox closes an idle connection after
-about 10 seconds, so an interval below that (for example 5 seconds) keeps one
-connection open and avoids a new TLS handshake on every poll.
+over the same HTTPS connection. The default interval is 5 seconds.
+
+> **Choose the interval clearly below or clearly above 10 seconds.** The
+> wallbox hard-closes an idle HTTPS connection after about 10 seconds with a
+> TCP reset. With an interval below that (for example 5 seconds) one connection
+> stays open and no TLS handshake is needed per poll. With a much longer
+> interval (for example 30 seconds or more) every poll opens a new connection,
+> but only rarely. Values around 10 to 15 seconds are the worst case: the
+> connection is reset right before it would be reused.
 
 If authentication fails, Home Assistant starts a reauthentication flow and
 asks for the current password.

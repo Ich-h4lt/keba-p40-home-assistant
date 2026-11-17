@@ -24,7 +24,7 @@ SESSION_CARD_UNKNOWN: Final = "unknown_card"
 
 DEFAULT_USERNAME: Final = "admin"
 DEFAULT_PORT: Final = 8443
-DEFAULT_SCAN_INTERVAL: Final = 10
+DEFAULT_SCAN_INTERVAL: Final = 5
 
 STORAGE_VERSION: Final = 1
 STORAGE_KEY: Final = f"{DOMAIN}.{{entry_id}}"
